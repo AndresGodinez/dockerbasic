@@ -1,0 +1,107 @@
+#!/usr/bin/env bash
+
+export APP_PORT=${APP_PORT:-8080}
+export DB_PORT=${DB_PORT:-3306}
+export MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD:-rootpassword}
+export MYSQL_DATABASE=${MYSQL_DATABASE:-wirewatt}
+export MYSQL_USER=${MYSQL_USER:-ago} 
+export MYSQL_PASSWORD=${MYSQL_PASSWORD:-secret}
+
+COMPOSE="docker-compose"
+
+if [ "$1" == "s" ]; then
+    $COMPOSE up -d
+elif [ "$1" == "q" ]; then
+    $COMPOSE down
+fi
+
+PSRESULT=$(docker-compose ps -q)
+ 
+if [ ! -z "$PSRESULT" ]; then
+    EXEC="yes"
+else
+    EXEC="no"
+fi
+
+
+if [ $# -gt 0 ]; then
+
+    if [ "$1" == "art" ]; then
+        shift 1
+        if [ "$EXEC" == "yes" ]; then
+            $COMPOSE exec \
+                app \
+                php artisan "$@"
+        else
+            $COMPOSE run --rm \
+                -w /var/www/html \
+                app \
+                php artisan "$@"
+        fi
+
+    elif [ "$1" == "composer" ]; then
+        shift 1
+        if [ "$EXEC" == "yes" ]; then
+            $COMPOSE exec \
+                app \
+                composer "$@"
+        else
+            $COMPOSE run --rm \
+                -w /var/www/html \
+                app \
+                composer "$@"
+        fi
+
+
+    elif [ "$1" == "test" ]; then
+        shift 1
+        if [ "$EXEC" == "yes" ]; then
+            $COMPOSE exec \
+                app \
+                ./vendor/bin/phpunit "$@"
+        else
+            $COMPOSE run --rm \
+                -w /var/www/html \
+                app \
+                ./vendor/bin/phpunit "$@"
+        fi        
+
+    elif [ "$1" == "npm" ]; then    
+        shift 1
+        $COMPOSE run --rm \
+            -w /var/www/html \
+            node \
+            npm "$@"
+
+    elif [ "$1" == "gulp" ]; then
+        shift 1
+        if [ "$EXEC" == "yes" ]; then
+            $COMPOSE exec \
+                node \
+                ./node_modules/.bin/gulp  "$@"
+        else   
+        $COMPOSE run --rm \
+            -w /var/www/html \
+            node \
+            ./node_modules/.bin/gulp "$@"
+        fi    
+
+    elif [ "$1" == "yarn" ]; then
+        shift 1
+        if [ "$EXEC" == "yes" ]; then
+            $COMPOSE exec \
+                node \
+                yarn "$@"
+        else        
+            $COMPOSE run --rm \
+                -w /var/www/html \
+                node \
+                yarn "$@"
+        fi        
+
+    else
+        $COMPOSE "$@"
+    fi
+else
+    $COMPOSE ps
+fi
